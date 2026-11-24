@@ -15,6 +15,8 @@ public class Prefs {
     private static final String K_RECENT = "recent";
     private static final String K_FEATURED = "featured";
     private static final String K_FAV_SLOT = "favorite_slot_";
+    private static final String K_WALLPAPER_URI = "wallpaper_uri";
+    private static final String K_WALLPAPER_STYLE = "wallpaper_style";
     private static final int MAX_RECENT = 12;
     private static final String SEP = "\n";
 
@@ -98,6 +100,14 @@ public class Prefs {
         }
         return out;
     }
+
+    public String getWallpaperUri() { return sp.getString(K_WALLPAPER_URI, null); }
+    public void setWallpaperUri(String uri) {
+        if (uri == null) sp.edit().remove(K_WALLPAPER_URI).apply();
+        else sp.edit().putString(K_WALLPAPER_URI, uri).apply();
+    }
+    public String getWallpaperStyle() { return sp.getString(K_WALLPAPER_STYLE, "default"); }
+    public void setWallpaperStyle(String style) { sp.edit().putString(K_WALLPAPER_STYLE, style).apply(); }
 
     // ---- hidden ----
     public List<String> getHidden() {
