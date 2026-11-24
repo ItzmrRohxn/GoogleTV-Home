@@ -561,7 +561,7 @@ public class MainActivity extends Activity {
             public void onFocusChange(View v, boolean hasFocus) {
                 float s = hasFocus ? 1.10f : 1.0f;
                 card.animate().scaleX(s).scaleY(s).setDuration(130).start();
-                labelView.animate().alpha(hasFocus ? 1f : 0f).setDuration(130).start();
+                labelView.setAlpha(1f);
                 if (hasFocus) {
                     lastFocusKey = info.key;
                     scrollToTile(info);
