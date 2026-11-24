@@ -266,8 +266,6 @@ public class MainActivity extends Activity {
     private void loadImagesInBackground() {
         final int wallW = 1280;
         final int wallH = 720;
-        final int banW = 960;
-        final int banH = 220;
         try {
             worker.execute(new Runnable() {
                 @Override
@@ -276,12 +274,7 @@ public class MainActivity extends Activity {
                     String savedUri = prefs.getWallpaperUri();
                     if (savedUri != null) wall = BitmapUtil.decodeUri(MainActivity.this, Uri.parse(savedUri), wallW, wallH);
                     if (wall == null) wall = loadCustomImage("wallpaper", wallW, wallH);
-                    Bitmap ban = null;
-                    if (ban == null) {
-                        ban = BitmapUtil.decodeResource(getResources(), R.drawable.banner_default, banW, banH);
-                    }
                     final Bitmap w = wall;
-                    final Bitmap b = ban;
                     handler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -290,7 +283,6 @@ public class MainActivity extends Activity {
                             }
                             String style = prefs.getWallpaperStyle();
                             if ("ocean".equals(style)) wallpaperView.setImageResource(R.drawable.wallpaper_ocean);
-                            else if ("aurora".equals(style)) wallpaperView.setImageResource(R.drawable.wallpaper_aurora);
                             else if ("custom".equals(style) && w != null) wallpaperView.setImageBitmap(w);
                             else {
                                 wallpaperView.setImageDrawable(null);
@@ -941,19 +933,17 @@ public class MainActivity extends Activity {
     }
 
     private void showBuiltInWallpapers() {
-        final String[] names = new String[]{"Original cinematic", "Deep ocean", "Aurora glow"};
+        final String[] names = new String[]{"Pure black", "Deep ocean", "Midnight"};
         dialog().setTitle("Built-in wallpapers").setItems(names, new DialogInterface.OnClickListener() {
             @Override public void onClick(DialogInterface d, int which) {
                 prefs.setWallpaperUri(null);
                 if (which == 1) {
                     prefs.setWallpaperStyle("ocean");
                     wallpaperView.setImageResource(R.drawable.wallpaper_ocean);
-                } else if (which == 2) {
-                    prefs.setWallpaperStyle("aurora");
-                    wallpaperView.setImageResource(R.drawable.wallpaper_aurora);
                 } else {
                     prefs.setWallpaperStyle("default");
-                    loadImagesInBackground();
+                    wallpaperView.setImageDrawable(null);
+                    wallpaperView.setBackgroundColor(Color.BLACK);
                 }
             }
         }).show();
