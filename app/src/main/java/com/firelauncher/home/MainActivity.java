@@ -51,6 +51,7 @@ public class MainActivity extends Activity {
 
     private static final String CUSTOM_DIR = "FireLauncher";
     private static final String HOME_ALIAS = "com.firelauncher.home.HomeAlias";
+    private static final int REQUEST_WALLPAPER = 2026;
 
     private static final int TYPE_APP = 0;
     private static final int TYPE_HOME_TOGGLE = 1;
@@ -177,6 +178,19 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_WALLPAPER && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); }
+            catch (Throwable ignored) { }
+            prefs.setWallpaperUri(uri.toString());
+            prefs.setWallpaperStyle("custom");
+            loadImagesInBackground();
+        }
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         // Home button pressed while we are already open: jump back to the top.
@@ -258,7 +272,10 @@ public class MainActivity extends Activity {
             worker.execute(new Runnable() {
                 @Override
                 public void run() {
-                    Bitmap wall = loadCustomImage("wallpaper", wallW, wallH);
+                    Bitmap wall = null;
+                    String savedUri = prefs.getWallpaperUri();
+                    if (savedUri != null) wall = BitmapUtil.decodeUri(MainActivity.this, Uri.parse(savedUri), wallW, wallH);
+                    if (wall == null) wall = loadCustomImage("wallpaper", wallW, wallH);
                     if (wall == null) {
                         wall = BitmapUtil.decodeResource(getResources(), R.drawable.wallpaper_default, wallW, wallH);
                     }
@@ -274,9 +291,11 @@ public class MainActivity extends Activity {
                             if (destroyed) {
                                 return;
                             }
-                            if (w != null) {
-                                wallpaperView.setImageBitmap(w);
-                            }
+                            if (w != null) wallpaperView.setImageBitmap(w);
+                            String style = prefs.getWallpaperStyle();
+                            if ("ocean".equals(style)) wallpaperView.setImageResource(R.drawable.wallpaper_ocean);
+                            else if ("aurora".equals(style)) wallpaperView.setImageResource(R.drawable.wallpaper_aurora);
+                            else if (!"custom".equals(style)) wallpaperView.setImageBitmap(w);
                             if (b != null) {
                                 bannerImage.setImageBitmap(b);
                             }
@@ -845,44 +864,56 @@ public class MainActivity extends Activity {
                 "Show all hidden apps",
                 "Clear favorites and recents",
                 "Remove featured app from banner",
-                "How to set my own wallpaper and banner",
+                "Choose built-in wallpaper",
+                "Choose my own picture",
+                "How to set a custom banner",
                 "About"
         };
         dialog().setTitle("Launcher options").setItems(items, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface d, int which) {
+            @Override public void onClick(DialogInterface d, int which) {
                 switch (which) {
-                    case 0:
-                        prefs.unhideAll();
-                        refresh();
-                        break;
-                    case 1:
-                        prefs.clearFavoritesAndRecent();
-                        refresh();
-                        break;
-                    case 2:
-                        prefs.setFeatured(null);
-                        refresh();
-                        break;
-                    case 3:
-                        dialog().setTitle("Custom wallpaper and banner")
-                                .setMessage("Copy your pictures to the Fire TV folder\n"
-                                        + "    Internal storage / FireLauncher\n\n"
-                                        + "using these exact names:\n"
-                                        + "    wallpaper.jpg  (best: 1920x1080)\n"
-                                        + "    banner.jpg  (best: 1800x400)\n\n"
-                                        + "PNG also works. Then close and reopen this launcher.\n"
-                                        + "Delete the files to go back to the built-in pictures.")
-                                .setPositiveButton("OK", null).show();
-                        break;
+                    case 0: prefs.unhideAll(); refresh(); break;
+                    case 1: prefs.clearFavoritesAndRecent(); refresh(); break;
+                    case 2: prefs.setFeatured(null); refresh(); break;
+                    case 3: showBuiltInWallpapers(); break;
                     case 4:
-                        dialog().setTitle("TV Home 1.0")
-                                .setMessage("A lightweight launcher for the Fire TV Stick 2nd generation.\n"
-                                        + "No Google services. It never changes or removes Amazon's own home screen.")
+                        Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                        pick.addCategory(Intent.CATEGORY_OPENABLE);
+                        pick.setType("image/*");
+                        pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                        try { startActivityForResult(pick, REQUEST_WALLPAPER); }
+                        catch (Throwable t) { toast("The picture picker is not available on this device."); }
+                        break;
+                    case 5:
+                        dialog().setTitle("Custom banner")
+                                .setMessage("Copy a picture to Internal storage / FireLauncher and name it banner.jpg (or banner.png). Restart TV Home to use it.")
                                 .setPositiveButton("OK", null).show();
                         break;
-                    default:
+                    case 6:
+                        dialog().setTitle("TV Home 1.0")
+                                .setMessage("A lightweight launcher for the Fire TV Stick 2nd generation. It never changes or removes Amazon's own home screen.")
+                                .setPositiveButton("OK", null).show();
                         break;
+                    default: break;
+                }
+            }
+        }).show();
+    }
+
+    private void showBuiltInWallpapers() {
+        final String[] names = new String[]{"Original cinematic", "Deep ocean", "Aurora glow"};
+        dialog().setTitle("Built-in wallpapers").setItems(names, new DialogInterface.OnClickListener() {
+            @Override public void onClick(DialogInterface d, int which) {
+                prefs.setWallpaperUri(null);
+                if (which == 1) {
+                    prefs.setWallpaperStyle("ocean");
+                    wallpaperView.setImageResource(R.drawable.wallpaper_ocean);
+                } else if (which == 2) {
+                    prefs.setWallpaperStyle("aurora");
+                    wallpaperView.setImageResource(R.drawable.wallpaper_aurora);
+                } else {
+                    prefs.setWallpaperStyle("default");
+                    loadImagesInBackground();
                 }
             }
         }).show();
