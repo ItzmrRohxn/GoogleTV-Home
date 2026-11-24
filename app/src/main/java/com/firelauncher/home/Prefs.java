@@ -14,6 +14,7 @@ public class Prefs {
     private static final String K_HIDDEN = "hidden";
     private static final String K_RECENT = "recent";
     private static final String K_FEATURED = "featured";
+    private static final String K_FAV_SLOT = "favorite_slot_";
     private static final int MAX_RECENT = 12;
     private static final String SEP = "\n";
 
@@ -72,6 +73,30 @@ public class Prefs {
         }
         putList(K_FAV, list);
         return now;
+    }
+
+    // ---- fixed home-screen favorite slots ----
+    public String getFavoriteSlot(int slot) {
+        return sp.getString(K_FAV_SLOT + slot, null);
+    }
+
+    public void setFavoriteSlot(int slot, String pkg) {
+        if (pkg == null) {
+            sp.edit().remove(K_FAV_SLOT + slot).apply();
+        } else {
+            sp.edit().putString(K_FAV_SLOT + slot, pkg).apply();
+        }
+    }
+
+    public List<String> getFavoriteSlots() {
+        List<String> out = new ArrayList<String>();
+        List<String> old = getFavorites();
+        for (int i = 0; i < 5; i++) {
+            String pkg = getFavoriteSlot(i);
+            if (pkg == null && i < old.size()) pkg = old.get(i);
+            out.add(pkg);
+        }
+        return out;
     }
 
     // ---- hidden ----
