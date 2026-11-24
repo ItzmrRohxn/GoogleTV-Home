@@ -244,7 +244,7 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        boolean atTop = scroll.getScrollY() < 4 && banner.isFocused();
+        boolean atTop = scroll.getScrollY() < 4 && !tiles.isEmpty() && tiles.get(0).isFocused();
         if (!atTop) {
             goToTop();
             return;
@@ -257,8 +257,8 @@ public class MainActivity extends Activity {
     }
 
     private void goToTop() {
-        banner.requestFocus();
         scroll.smoothScrollTo(0, 0);
+        if (!tiles.isEmpty()) tiles.get(0).requestFocus();
     }
 
     // ------------------------------------------------------------------ images
@@ -276,10 +276,7 @@ public class MainActivity extends Activity {
                     String savedUri = prefs.getWallpaperUri();
                     if (savedUri != null) wall = BitmapUtil.decodeUri(MainActivity.this, Uri.parse(savedUri), wallW, wallH);
                     if (wall == null) wall = loadCustomImage("wallpaper", wallW, wallH);
-                    if (wall == null) {
-                        wall = BitmapUtil.decodeResource(getResources(), R.drawable.wallpaper_default, wallW, wallH);
-                    }
-                    Bitmap ban = loadCustomImage("banner", banW, banH);
+                    Bitmap ban = null;
                     if (ban == null) {
                         ban = BitmapUtil.decodeResource(getResources(), R.drawable.banner_default, banW, banH);
                     }
@@ -291,13 +288,13 @@ public class MainActivity extends Activity {
                             if (destroyed) {
                                 return;
                             }
-                            if (w != null) wallpaperView.setImageBitmap(w);
                             String style = prefs.getWallpaperStyle();
                             if ("ocean".equals(style)) wallpaperView.setImageResource(R.drawable.wallpaper_ocean);
                             else if ("aurora".equals(style)) wallpaperView.setImageResource(R.drawable.wallpaper_aurora);
-                            else if (!"custom".equals(style)) wallpaperView.setImageBitmap(w);
-                            if (b != null) {
-                                bannerImage.setImageBitmap(b);
+                            else if ("custom".equals(style) && w != null) wallpaperView.setImageBitmap(w);
+                            else {
+                                wallpaperView.setImageDrawable(null);
+                                wallpaperView.setBackgroundColor(Color.BLACK);
                             }
                         }
                     });
@@ -416,7 +413,7 @@ public class MainActivity extends Activity {
         addAppsGridRow(apps, rowIndex++);
         addSystemRow(rowIndex);
 
-        updateBanner(byPkg);
+        // Featured banner removed: the app rows are now the home screen.
 
         // Put focus back where the user was, or on the first tile.
         View target = null;
@@ -431,7 +428,7 @@ public class MainActivity extends Activity {
         }
         if (target == null) {
             if (firstBuild || lastFocusKey == null) {
-                target = tiles.isEmpty() ? banner : tiles.get(0);
+                target = tiles.isEmpty() ? null : tiles.get(0);
             }
         }
         if (target != null) {
