@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Fire TV reports a 960x540 dp screen at 1080p, so these are sized for that. -->
-    <dimen name="tile_size">140dp</dimen>
-    <dimen name="tile_height">96dp</dimen>
-    <dimen name="icon_size">60dp</dimen>
+    <dimen name="tile_size">132dp</dimen>
+    <dimen name="tile_height">132dp</dimen>
+    <dimen name="icon_size">64dp</dimen>
     <dimen name="screen_margin">52dp</dimen>
 </resources>
