@@ -15,6 +15,7 @@ public class Prefs {
     private static final String K_RECENT = "recent";
     private static final String K_FEATURED = "featured";
     private static final String K_FAV_SLOT = "favorite_slot_";
+    private static final String K_FAV_MIGRATED = "favorite_slots_migrated";
     private static final String K_WALLPAPER_URI = "wallpaper_uri";
     private static final String K_WALLPAPER_STYLE = "wallpaper_style";
     private static final int MAX_RECENT = 12;
@@ -59,22 +60,25 @@ public class Prefs {
     }
 
     public boolean isFavorite(String pkg) {
-        return getList(K_FAV).contains(pkg);
+        return getFavoriteSlots().contains(pkg);
     }
 
     /** @return true if the app is a favorite after the call. */
     public boolean toggleFavorite(String pkg) {
-        List<String> list = getList(K_FAV);
-        boolean now;
-        if (list.contains(pkg)) {
-            list.remove(pkg);
-            now = false;
-        } else {
-            list.add(pkg);
-            now = true;
+        List<String> slots = getFavoriteSlots();
+        for (int i = 0; i < slots.size(); i++) {
+            if (pkg.equals(slots.get(i))) {
+                setFavoriteSlot(i, null);
+                return false;
+            }
         }
-        putList(K_FAV, list);
-        return now;
+        for (int i = 0; i < slots.size(); i++) {
+            if (slots.get(i) == null) {
+                setFavoriteSlot(i, pkg);
+                return true;
+            }
+        }
+        return false;
     }
 
     // ---- fixed home-screen favorite slots ----
@@ -91,13 +95,16 @@ public class Prefs {
     }
 
     public List<String> getFavoriteSlots() {
-        List<String> out = new ArrayList<String>();
-        List<String> old = getFavorites();
-        for (int i = 0; i < 5; i++) {
-            String pkg = getFavoriteSlot(i);
-            if (pkg == null && i < old.size()) pkg = old.get(i);
-            out.add(pkg);
+        if (!sp.getBoolean(K_FAV_MIGRATED, false)) {
+            List<String> old = getList(K_FAV);
+            SharedPreferences.Editor edit = sp.edit();
+            for (int i = 0; i < 5 && i < old.size(); i++) {
+                edit.putString(K_FAV_SLOT + i, old.get(i));
+            }
+            edit.putBoolean(K_FAV_MIGRATED, true).apply();
         }
+        List<String> out = new ArrayList<String>();
+        for (int i = 0; i < 5; i++) out.add(getFavoriteSlot(i));
         return out;
     }
 
