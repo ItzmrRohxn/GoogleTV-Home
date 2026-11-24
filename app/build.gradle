@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.firelauncher.home'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.firelauncher.home'
+        // Fire TV Stick 2nd gen (Fire OS 5.2.x) = Android 5.1.1 = API 22
+        minSdk 22
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        debug {
+            // Debug builds are signed automatically and install fine with adb.
+        }
+        release {
+            minifyEnabled false
+            // Signed with the debug key so the release APK is also installable.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+        encoding 'UTF-8'
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+// No third-party libraries on purpose: tiny APK, low RAM use,
+// and no Google Play Services dependency.
+dependencies {
+}
