@@ -98,13 +98,13 @@ public class Prefs {
         if (!sp.getBoolean(K_FAV_MIGRATED, false)) {
             List<String> old = getList(K_FAV);
             SharedPreferences.Editor edit = sp.edit();
-            for (int i = 0; i < 5 && i < old.size(); i++) {
+            for (int i = 0; i < 4 && i < old.size(); i++) {
                 edit.putString(K_FAV_SLOT + i, old.get(i));
             }
             edit.putBoolean(K_FAV_MIGRATED, true).apply();
         }
         List<String> out = new ArrayList<String>();
-        for (int i = 0; i < 5; i++) out.add(getFavoriteSlot(i));
+        for (int i = 0; i < 4; i++) out.add(getFavoriteSlot(i));
         return out;
     }
 
@@ -150,7 +150,7 @@ public class Prefs {
 
     public void clearFavoritesAndRecent() {
         SharedPreferences.Editor edit = sp.edit().remove(K_FAV).remove(K_RECENT);
-        for (int i = 0; i < 5; i++) edit.remove(K_FAV_SLOT + i);
+        for (int i = 0; i < 4; i++) edit.remove(K_FAV_SLOT + i);
         edit.putBoolean(K_FAV_MIGRATED, true).apply();
     }
 
