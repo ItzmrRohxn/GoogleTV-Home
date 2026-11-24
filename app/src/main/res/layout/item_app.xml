@@ -14,7 +14,7 @@
         android:background="@drawable/bg_tile"
         android:clickable="true"
         android:focusable="true"
-        android:foreground="@drawable/fg_tile_focus">
+        >
 
         <ImageView
             android:id="@+id/tile_icon"
