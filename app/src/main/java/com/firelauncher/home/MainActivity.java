@@ -2,6 +2,7 @@ package com.firelauncher.home;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -18,10 +19,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.KeyEvent;
+import android.view.Gravity;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.HorizontalScrollView;
+import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -51,6 +56,7 @@ public class MainActivity extends Activity {
     private static final int TYPE_HOME_TOGGLE = 1;
     private static final int TYPE_SETTINGS = 2;
     private static final int TYPE_OPTIONS = 3;
+    private static final int TYPE_MORE_APPS = 4;
 
     /** What a focusable tile stands for. Stored as the tile's tag. */
     private static final class TileInfo {
@@ -379,9 +385,7 @@ public class MainActivity extends Activity {
         }
 
         int rowIndex = 0;
-        if (!favorites.isEmpty()) {
-            addAppRow("Favorites", "fav", favorites, rowIndex++);
-        }
+        addAppRow("Favorites", "fav", favorites, rowIndex++);
         if (!recent.isEmpty()) {
             addAppRow("Recently used", "rec", recent, rowIndex++);
         }
@@ -435,6 +439,16 @@ public class MainActivity extends Activity {
             info.hsv = hsv;
             View item = makeTile(items, info, e.label);
             icons.bind(pm, e, (ImageView) item.findViewById(R.id.tile_icon));
+        }
+        if ("fav".equals(section)) {
+            TileInfo more = new TileInfo();
+            more.type = TYPE_MORE_APPS;
+            more.key = "more:apps";
+            more.rowIndex = rowIndex;
+            more.rowView = row;
+            more.hsv = hsv;
+            View moreItem = makeTile(items, more, "More Apps");
+            ((ImageView) moreItem.findViewById(R.id.tile_icon)).setImageBitmap(icons.systemIcon(IconLoader.KIND_OPTIONS));
         }
         content.addView(row);
     }
@@ -572,6 +586,9 @@ public class MainActivity extends Activity {
             case TYPE_OPTIONS:
                 showOptionsDialog();
                 break;
+            case TYPE_MORE_APPS:
+                showAppDrawer();
+                break;
             default:
                 break;
         }
@@ -589,6 +606,80 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             toast("Could not open " + e.label);
         }
+    }
+
+    private void showAppDrawer() {
+        final Dialog drawer = new Dialog(this, android.R.style.Theme_Material_NoActionBar_Fullscreen);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(36, 24, 36, 24);
+        root.setBackgroundColor(Color.rgb(8, 11, 19));
+
+        TextView heading = new TextView(this);
+        heading.setText("More Apps");
+        heading.setTextColor(Color.WHITE);
+        heading.setTextSize(28);
+        heading.setTypeface(null, android.graphics.Typeface.BOLD);
+        heading.setPadding(8, 8, 8, 20);
+        root.addView(heading);
+
+        ScrollView list = new ScrollView(this);
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(5);
+        grid.setUseDefaultMargins(true);
+        Set<String> hidden = new HashSet<String>(prefs.getHidden());
+        for (int i = 0; i < allApps.size(); i++) {
+            final AppEntry app = allApps.get(i);
+            if (hidden.contains(app.packageName)) continue;
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setGravity(Gravity.CENTER);
+            card.setFocusable(true);
+            card.setClickable(true);
+            card.setPadding(12, 12, 12, 12);
+            GradientDrawable shape = new GradientDrawable();
+            shape.setColor(Color.rgb(27, 33, 47));
+            shape.setCornerRadius(22f);
+            card.setBackgroundDrawable(shape);
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = 150;
+            lp.height = 145;
+            lp.setMargins(10, 10, 10, 10);
+            card.setLayoutParams(lp);
+            ImageView icon = new ImageView(this);
+            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(72, 72);
+            icon.setLayoutParams(ip);
+            icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            card.addView(icon);
+            icons.bind(pm, app, icon);
+            TextView name = new TextView(this);
+            name.setText(app.label);
+            name.setTextColor(Color.WHITE);
+            name.setTextSize(14);
+            name.setGravity(Gravity.CENTER);
+            name.setMaxLines(1);
+            card.addView(name);
+            card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override public void onFocusChange(View v, boolean focused) {
+                    v.animate().scaleX(focused ? 1.08f : 1f).scaleY(focused ? 1.08f : 1f).setDuration(120).start();
+                }
+            });
+            card.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { drawer.dismiss(); launch(app); }
+            });
+            grid.addView(card);
+        }
+        list.addView(grid);
+        root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1f));
+        TextView hint = new TextView(this);
+        hint.setText("Press Back to return home");
+        hint.setTextColor(Color.LTGRAY);
+        hint.setTextSize(13);
+        hint.setPadding(8, 14, 8, 4);
+        root.addView(hint);
+        drawer.setContentView(root);
+        drawer.show();
+        if (drawer.getWindow() != null) drawer.getWindow().setLayout(-1, -1);
     }
 
     private void openSettings() {
