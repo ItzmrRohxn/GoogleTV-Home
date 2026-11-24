@@ -487,14 +487,6 @@ public class MainActivity extends Activity {
             if (app != null) icons.bind(pm, app, icon);
             else icon.setImageBitmap(icons.systemIcon(IconLoader.KIND_OPTIONS));
         }
-        TileInfo more = new TileInfo();
-        more.type = TYPE_MORE_APPS;
-        more.key = "more:apps";
-        more.rowIndex = rowIndex;
-        more.rowView = row;
-        more.hsv = hsv;
-        View moreItem = makeTile(items, more, "More Apps");
-        ((ImageView) moreItem.findViewById(R.id.tile_icon)).setImageBitmap(icons.systemIcon(IconLoader.KIND_OPTIONS));
         content.addView(row);
     }
 
@@ -561,7 +553,7 @@ public class MainActivity extends Activity {
             info.entry = app;
             info.key = "all:" + app.packageName;
             info.rowIndex = rowIndex + (i / 5);
-            info.rowView = grid;
+            info.rowView = cell;
             View item = makeTile(cell, info, app.label);
             icons.bind(pm, app, (ImageView) item.findViewById(R.id.tile_icon));
 
@@ -627,8 +619,13 @@ public class MainActivity extends Activity {
         card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                float s = hasFocus ? 1.10f : 1.0f;
-                card.animate().scaleX(s).scaleY(s).setDuration(130).start();
+                float s = hasFocus ? 1.075f : 1.0f;
+                card.animate().cancel();
+                card.animate().scaleX(s).scaleY(s).translationZ(hasFocus ? 10f * density : 0f)
+                        .setDuration(hasFocus ? 170 : 140).start();
+                if (Build.VERSION.SDK_INT >= 21) {
+                    card.setElevation((hasFocus ? 14f : 2f) * density);
+                }
                 labelView.setAlpha(1f);
                 if (hasFocus) {
                     lastFocusKey = info.key;
