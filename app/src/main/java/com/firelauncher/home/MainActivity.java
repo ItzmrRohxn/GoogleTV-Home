@@ -413,9 +413,6 @@ public class MainActivity extends Activity {
 
         int rowIndex = 0;
         addFavoriteSlotsRow(byPkg, rowIndex++);
-        if (!recent.isEmpty()) {
-            addAppRow("Recently used", "rec", recent, rowIndex++);
-        }
         addAppsGridRow(apps, rowIndex++);
         addSystemRow(rowIndex);
 
@@ -647,12 +644,12 @@ public class MainActivity extends Activity {
             int targetX = center - info.hsv.getWidth() / 2;
             info.hsv.smoothScrollTo(Math.max(0, targetX), 0);
         }
-        int targetY;
-        if (info.rowIndex == 0) {
-            targetY = 0; // first row fits on screen together with the banner
-        } else {
-            targetY = Math.max(0, info.rowView.getTop() - Math.round(90 * density));
+        int rowTop = info.rowView == null ? 0 : info.rowView.getTop();
+        if (info.rowView != null && info.rowView.getParent() instanceof GridLayout) {
+            rowTop += ((View) info.rowView.getParent()).getTop();
         }
+        int targetY = info.rowIndex == 0 ? 0
+                : Math.max(0, rowTop - Math.round(90 * density));
         scroll.smoothScrollTo(0, targetY);
     }
 
