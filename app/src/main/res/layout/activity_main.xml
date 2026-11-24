@@ -33,14 +33,14 @@
             android:clipChildren="false"
             android:clipToPadding="false"
             android:orientation="vertical"
-            android:paddingBottom="200dp"
-            android:paddingTop="84dp">
+            android:paddingBottom="120dp"
+            android:paddingTop="88dp">
 
             <!-- Featured banner. Everything below it (the rows) is added from Java. -->
             <FrameLayout
                 android:id="@+id/banner"
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
+                android:layout_height="132dp"
                 android:layout_marginLeft="@dimen/screen_margin"
                 android:layout_marginRight="@dimen/screen_margin"
                 android:background="@drawable/bg_banner"
@@ -85,7 +85,7 @@
                         android:maxLines="1"
                         android:ellipsize="end"
                         android:textColor="@color/text_primary"
-                        android:textSize="36sp"
+                        android:textSize="30sp"
                         android:textStyle="bold" />
 
                     <TextView
