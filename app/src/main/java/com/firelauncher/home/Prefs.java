@@ -149,7 +149,9 @@ public class Prefs {
     }
 
     public void clearFavoritesAndRecent() {
-        sp.edit().remove(K_FAV).remove(K_RECENT).apply();
+        SharedPreferences.Editor edit = sp.edit().remove(K_FAV).remove(K_RECENT);
+        for (int i = 0; i < 5; i++) edit.remove(K_FAV_SLOT + i);
+        edit.putBoolean(K_FAV_MIGRATED, true).apply();
     }
 
     // ---- featured banner app ----
