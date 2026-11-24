@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
     private static final int TYPE_SETTINGS = 2;
     private static final int TYPE_OPTIONS = 3;
     private static final int TYPE_MORE_APPS = 4;
+    private static final int TYPE_FAV_SLOT = 5;
 
     /** What a focusable tile stands for. Stored as the tile's tag. */
     private static final class TileInfo {
@@ -64,6 +65,7 @@ public class MainActivity extends Activity {
         AppEntry entry;
         String key;
         int rowIndex;
+        int slotIndex;
         View rowView;
         HorizontalScrollView hsv;
         View item;
@@ -358,13 +360,19 @@ public class MainActivity extends Activity {
         }
         Set<String> hidden = new HashSet<String>(prefs.getHidden());
 
+        List<String> favSlots = prefs.getFavoriteSlots();
+        boolean slotsEmpty = true;
+        for (int i = 0; i < favSlots.size(); i++) {
+            if (favSlots.get(i) != null) slotsEmpty = false;
+        }
+        if (slotsEmpty && prefs.getFavorites().isEmpty()) {
+            seedDefaultFavorites(byPkg);
+            favSlots = prefs.getFavoriteSlots();
+        }
         List<AppEntry> favorites = new ArrayList<AppEntry>();
-        List<String> favPkgs = prefs.getFavorites();
-        for (int i = 0; i < favPkgs.size(); i++) {
-            AppEntry e = byPkg.get(favPkgs.get(i));
-            if (e != null) {
-                favorites.add(e);
-            }
+        for (int i = 0; i < favSlots.size(); i++) {
+            AppEntry e = favSlots.get(i) == null ? null : byPkg.get(favSlots.get(i));
+            if (e != null) favorites.add(e);
         }
 
         List<AppEntry> recent = new ArrayList<AppEntry>();
@@ -385,7 +393,7 @@ public class MainActivity extends Activity {
         }
 
         int rowIndex = 0;
-        addAppRow("Favorites", "fav", favorites, rowIndex++);
+        addFavoriteSlotsRow(byPkg, rowIndex++);
         if (!recent.isEmpty()) {
             addAppRow("Recently used", "rec", recent, rowIndex++);
         }
@@ -418,6 +426,52 @@ public class MainActivity extends Activity {
             scroll.scrollTo(0, 0);
             content.animate().alpha(1f).setDuration(260).start();
         }
+    }
+
+    private void seedDefaultFavorites(Map<String, AppEntry> byPkg) {
+        String[] wanted = new String[]{"youtube", "netflix", "aha", "jiohotstar"};
+        for (int slot = 0; slot < wanted.length; slot++) {
+            for (AppEntry app : allApps) {
+                String label = app.label == null ? "" : app.label.toLowerCase();
+                if (label.contains(wanted[slot])) {
+                    prefs.setFavoriteSlot(slot, app.packageName);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void addFavoriteSlotsRow(Map<String, AppEntry> byPkg, int rowIndex) {
+        final View row = LayoutInflater.from(this).inflate(R.layout.row_section, content, false);
+        ((TextView) row.findViewById(R.id.row_title)).setText("Your Apps");
+        HorizontalScrollView hsv = (HorizontalScrollView) row.findViewById(R.id.row_scroll);
+        LinearLayout items = (LinearLayout) row.findViewById(R.id.row_items);
+        List<String> slots = prefs.getFavoriteSlots();
+        for (int i = 0; i < 5; i++) {
+            String pkg = slots.get(i);
+            AppEntry app = pkg == null ? null : byPkg.get(pkg);
+            TileInfo info = new TileInfo();
+            info.type = app == null ? TYPE_FAV_SLOT : TYPE_APP;
+            info.entry = app;
+            info.slotIndex = i;
+            info.key = "favslot:" + i;
+            info.rowIndex = rowIndex;
+            info.rowView = row;
+            info.hsv = hsv;
+            View item = makeTile(items, info, app == null ? "Add app" : app.label);
+            ImageView icon = (ImageView) item.findViewById(R.id.tile_icon);
+            if (app != null) icons.bind(pm, app, icon);
+            else icon.setImageBitmap(icons.systemIcon(IconLoader.KIND_OPTIONS));
+        }
+        TileInfo more = new TileInfo();
+        more.type = TYPE_MORE_APPS;
+        more.key = "more:apps";
+        more.rowIndex = rowIndex;
+        more.rowView = row;
+        more.hsv = hsv;
+        View moreItem = makeTile(items, more, "More Apps");
+        ((ImageView) moreItem.findViewById(R.id.tile_icon)).setImageBitmap(icons.systemIcon(IconLoader.KIND_OPTIONS));
+        content.addView(row);
     }
 
     private void addAppRow(String title, String section, List<AppEntry> entries, int rowIndex) {
@@ -589,6 +643,9 @@ public class MainActivity extends Activity {
             case TYPE_MORE_APPS:
                 showAppDrawer();
                 break;
+            case TYPE_FAV_SLOT:
+                showFavoritePicker(info.slotIndex);
+                break;
             default:
                 break;
         }
@@ -628,9 +685,11 @@ public class MainActivity extends Activity {
         grid.setColumnCount(5);
         grid.setUseDefaultMargins(true);
         Set<String> hidden = new HashSet<String>(prefs.getHidden());
+        Set<String> favoritePackages = new HashSet<String>();
+        for (String pkg : prefs.getFavoriteSlots()) if (pkg != null) favoritePackages.add(pkg);
         for (int i = 0; i < allApps.size(); i++) {
             final AppEntry app = allApps.get(i);
-            if (hidden.contains(app.packageName)) continue;
+            if (hidden.contains(app.packageName) || favoritePackages.contains(app.packageName)) continue;
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
             card.setGravity(Gravity.CENTER);
@@ -680,6 +739,26 @@ public class MainActivity extends Activity {
         drawer.setContentView(root);
         drawer.show();
         if (drawer.getWindow() != null) drawer.getWindow().setLayout(-1, -1);
+    }
+
+    private void showFavoritePicker(final int slot) {
+        final List<AppEntry> choices = new ArrayList<AppEntry>();
+        final List<String> labels = new ArrayList<String>();
+        for (AppEntry app : allApps) {
+            if (!prefs.getHidden().contains(app.packageName)) {
+                choices.add(app);
+                labels.add(app.label);
+            }
+        }
+        labels.add("Clear this slot");
+        dialog().setTitle("Choose app for slot " + (slot + 1))
+                .setItems(labels.toArray(new String[labels.size()]), new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface d, int which) {
+                        if (which == choices.size()) prefs.setFavoriteSlot(slot, null);
+                        else prefs.setFavoriteSlot(slot, choices.get(which).packageName);
+                        refresh();
+                    }
+                }).show();
     }
 
     private void openSettings() {
