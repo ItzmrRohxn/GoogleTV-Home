@@ -416,7 +416,7 @@ public class MainActivity extends Activity {
         if (!recent.isEmpty()) {
             addAppRow("Recently used", "rec", recent, rowIndex++);
         }
-        addAppRow("Apps", "all", apps, rowIndex++);
+        addAppsGridRow(apps, rowIndex++);
         addSystemRow(rowIndex);
 
         updateBanner(byPkg);
@@ -462,11 +462,11 @@ public class MainActivity extends Activity {
 
     private void addFavoriteSlotsRow(Map<String, AppEntry> byPkg, int rowIndex) {
         final View row = LayoutInflater.from(this).inflate(R.layout.row_section, content, false);
-        ((TextView) row.findViewById(R.id.row_title)).setText("Your Apps");
+        ((TextView) row.findViewById(R.id.row_title)).setText("Favourites");
         HorizontalScrollView hsv = (HorizontalScrollView) row.findViewById(R.id.row_scroll);
         LinearLayout items = (LinearLayout) row.findViewById(R.id.row_items);
         List<String> slots = prefs.getFavoriteSlots();
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 4; i++) {
             String pkg = slots.get(i);
             AppEntry app = pkg == null ? null : byPkg.get(pkg);
             TileInfo info = new TileInfo();
@@ -524,6 +524,50 @@ public class MainActivity extends Activity {
             ((ImageView) moreItem.findViewById(R.id.tile_icon)).setImageBitmap(icons.systemIcon(IconLoader.KIND_OPTIONS));
         }
         content.addView(row);
+    }
+
+    /** A compact five-column app library grid beneath the favourite dock. */
+    private void addAppsGridRow(List<AppEntry> entries, int rowIndex) {
+        if (entries.isEmpty()) return;
+        TextView heading = new TextView(this);
+        heading.setText("Apps");
+        heading.setTextColor(getResources().getColor(R.color.text_secondary));
+        heading.setTextSize(18);
+        heading.setTypeface(null, android.graphics.Typeface.BOLD);
+        heading.setPadding(Math.round(52 * density), Math.round(22 * density),
+                Math.round(52 * density), Math.round(10 * density));
+        content.addView(heading);
+
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(5);
+        grid.setUseDefaultMargins(false);
+        grid.setPadding(Math.round(52 * density), Math.round(8 * density),
+                Math.round(52 * density), Math.round(24 * density));
+        grid.setClipChildren(false);
+        grid.setClipToPadding(false);
+
+        for (int i = 0; i < entries.size(); i++) {
+            final AppEntry app = entries.get(i);
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            TileInfo info = new TileInfo();
+            info.type = TYPE_APP;
+            info.entry = app;
+            info.key = "all:" + app.packageName;
+            info.rowIndex = rowIndex + (i / 5);
+            info.rowView = grid;
+            View item = makeTile(cell, info, app.label);
+            icons.bind(pm, app, (ImageView) item.findViewById(R.id.tile_icon));
+
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams(
+                    GridLayout.spec(i / 5), GridLayout.spec(i % 5, 1f));
+            lp.width = 0;
+            lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+            lp.setMargins(0, 0, Math.round(8 * density), Math.round(8 * density));
+            grid.addView(cell, lp);
+        }
+        content.addView(grid);
     }
 
     private void addSystemRow(int rowIndex) {
