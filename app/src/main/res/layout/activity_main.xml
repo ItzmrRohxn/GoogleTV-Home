@@ -17,7 +17,16 @@
             android:paddingBottom="96dp" android:paddingTop="88dp">
             <FrameLayout android:id="@+id/banner" android:layout_width="match_parent"
                 android:layout_height="0dp" android:visibility="gone"
-                android:clickable="false" android:focusable="false" />
+                android:clickable="false" android:focusable="false">
+                <ImageView android:id="@+id/banner_image" android:layout_width="1dp"
+                    android:layout_height="1dp" />
+                <ImageView android:id="@+id/banner_icon" android:layout_width="1dp"
+                    android:layout_height="1dp" />
+                <TextView android:id="@+id/banner_title" android:layout_width="1dp"
+                    android:layout_height="1dp" />
+                <TextView android:id="@+id/banner_subtitle" android:layout_width="1dp"
+                    android:layout_height="1dp" />
+            </FrameLayout>
         </LinearLayout>
     </ScrollView>
     <FrameLayout android:layout_width="match_parent" android:layout_height="72dp"
