@@ -406,7 +406,7 @@ public class MainActivity extends Activity {
         List<AppEntry> apps = new ArrayList<AppEntry>();
         for (int i = 0; i < allApps.size(); i++) {
             AppEntry e = allApps.get(i);
-            if (!hidden.contains(e.packageName)) {
+            if (!hidden.contains(e.packageName) && !favSlots.contains(e.packageName)) {
                 apps.add(e);
             }
         }
@@ -464,6 +464,11 @@ public class MainActivity extends Activity {
         final View row = LayoutInflater.from(this).inflate(R.layout.row_section, content, false);
         ((TextView) row.findViewById(R.id.row_title)).setText("Favourites");
         HorizontalScrollView hsv = (HorizontalScrollView) row.findViewById(R.id.row_scroll);
+        hsv.setBackgroundResource(R.drawable.bg_dock);
+        hsv.setPadding(Math.round(18 * density), Math.round(12 * density), Math.round(18 * density), Math.round(12 * density));
+        LinearLayout.LayoutParams dockLp = (LinearLayout.LayoutParams) hsv.getLayoutParams();
+        dockLp.setMargins(Math.round(52 * density), 0, Math.round(52 * density), 0);
+        hsv.setLayoutParams(dockLp);
         LinearLayout items = (LinearLayout) row.findViewById(R.id.row_items);
         List<String> slots = prefs.getFavoriteSlots();
         for (int i = 0; i < 4; i++) {
