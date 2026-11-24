@@ -21,8 +21,6 @@
             android:id="@+id/tile_icon"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_margin="4dp"
-            android:background="#FF101010"
             android:importantForAccessibility="no"
             android:scaleType="fitCenter" />
     </FrameLayout>
