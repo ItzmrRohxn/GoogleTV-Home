@@ -1,6 +1,9 @@
 package com.firelauncher.home;
 
 import android.content.res.Resources;
+import android.content.Context;
+import android.net.Uri;
+import java.io.InputStream;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -34,6 +37,26 @@ public final class BitmapUtil {
             o.inJustDecodeBounds = false;
             o.inPreferredConfig = Bitmap.Config.RGB_565;
             return BitmapFactory.decodeFile(path, o);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** Decodes a selected content URI without loading the full-resolution photo into memory. */
+    public static Bitmap decodeUri(Context context, Uri uri, int reqW, int reqH) {
+        try {
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            InputStream first = context.getContentResolver().openInputStream(uri);
+            BitmapFactory.decodeStream(first, null, bounds);
+            if (first != null) first.close();
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, reqW, reqH);
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+            InputStream second = context.getContentResolver().openInputStream(uri);
+            Bitmap bitmap = BitmapFactory.decodeStream(second, null, opts);
+            if (second != null) second.close();
+            return bitmap;
         } catch (Throwable t) {
             return null;
         }

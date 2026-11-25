@@ -2,6 +2,7 @@ package com.firelauncher.home;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -18,10 +19,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.KeyEvent;
+import android.view.Gravity;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.HorizontalScrollView;
+import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -46,11 +51,14 @@ public class MainActivity extends Activity {
 
     private static final String CUSTOM_DIR = "FireLauncher";
     private static final String HOME_ALIAS = "com.firelauncher.home.HomeAlias";
+    private static final int REQUEST_WALLPAPER = 2026;
 
     private static final int TYPE_APP = 0;
     private static final int TYPE_HOME_TOGGLE = 1;
     private static final int TYPE_SETTINGS = 2;
     private static final int TYPE_OPTIONS = 3;
+    private static final int TYPE_MORE_APPS = 4;
+    private static final int TYPE_FAV_SLOT = 5;
 
     /** What a focusable tile stands for. Stored as the tile's tag. */
     private static final class TileInfo {
@@ -58,6 +66,7 @@ public class MainActivity extends Activity {
         AppEntry entry;
         String key;
         int rowIndex;
+        int slotIndex;
         View rowView;
         HorizontalScrollView hsv;
         View item;
@@ -169,6 +178,19 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_WALLPAPER && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); }
+            catch (Throwable ignored) { }
+            prefs.setWallpaperUri(uri.toString());
+            prefs.setWallpaperStyle("custom");
+            loadImagesInBackground();
+        }
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         // Home button pressed while we are already open: jump back to the top.
@@ -222,7 +244,7 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        boolean atTop = scroll.getScrollY() < 4 && banner.isFocused();
+        boolean atTop = scroll.getScrollY() < 4 && !tiles.isEmpty() && tiles.get(0).isFocused();
         if (!atTop) {
             goToTop();
             return;
@@ -235,8 +257,8 @@ public class MainActivity extends Activity {
     }
 
     private void goToTop() {
-        banner.requestFocus();
         scroll.smoothScrollTo(0, 0);
+        if (!tiles.isEmpty()) tiles.get(0).requestFocus();
     }
 
     // ------------------------------------------------------------------ images
@@ -244,33 +266,27 @@ public class MainActivity extends Activity {
     private void loadImagesInBackground() {
         final int wallW = 1280;
         final int wallH = 720;
-        final int banW = 960;
-        final int banH = 220;
         try {
             worker.execute(new Runnable() {
                 @Override
                 public void run() {
-                    Bitmap wall = loadCustomImage("wallpaper", wallW, wallH);
-                    if (wall == null) {
-                        wall = BitmapUtil.decodeResource(getResources(), R.drawable.wallpaper_default, wallW, wallH);
-                    }
-                    Bitmap ban = loadCustomImage("banner", banW, banH);
-                    if (ban == null) {
-                        ban = BitmapUtil.decodeResource(getResources(), R.drawable.banner_default, banW, banH);
-                    }
+                    Bitmap wall = null;
+                    String savedUri = prefs.getWallpaperUri();
+                    if (savedUri != null) wall = BitmapUtil.decodeUri(MainActivity.this, Uri.parse(savedUri), wallW, wallH);
+                    if (wall == null) wall = loadCustomImage("wallpaper", wallW, wallH);
                     final Bitmap w = wall;
-                    final Bitmap b = ban;
                     handler.post(new Runnable() {
                         @Override
                         public void run() {
                             if (destroyed) {
                                 return;
                             }
-                            if (w != null) {
-                                wallpaperView.setImageBitmap(w);
-                            }
-                            if (b != null) {
-                                bannerImage.setImageBitmap(b);
+                            String style = prefs.getWallpaperStyle();
+                            if ("ocean".equals(style)) wallpaperView.setImageResource(R.drawable.wallpaper_ocean);
+                            else if ("custom".equals(style) && w != null) wallpaperView.setImageBitmap(w);
+                            else {
+                                wallpaperView.setImageDrawable(null);
+                                wallpaperView.setBackgroundColor(Color.BLACK);
                             }
                         }
                     });
@@ -352,13 +368,19 @@ public class MainActivity extends Activity {
         }
         Set<String> hidden = new HashSet<String>(prefs.getHidden());
 
+        List<String> favSlots = prefs.getFavoriteSlots();
+        boolean slotsEmpty = true;
+        for (int i = 0; i < favSlots.size(); i++) {
+            if (favSlots.get(i) != null) slotsEmpty = false;
+        }
+        if (slotsEmpty && prefs.getFavorites().isEmpty()) {
+            seedDefaultFavorites(byPkg);
+            favSlots = prefs.getFavoriteSlots();
+        }
         List<AppEntry> favorites = new ArrayList<AppEntry>();
-        List<String> favPkgs = prefs.getFavorites();
-        for (int i = 0; i < favPkgs.size(); i++) {
-            AppEntry e = byPkg.get(favPkgs.get(i));
-            if (e != null) {
-                favorites.add(e);
-            }
+        for (int i = 0; i < favSlots.size(); i++) {
+            AppEntry e = favSlots.get(i) == null ? null : byPkg.get(favSlots.get(i));
+            if (e != null) favorites.add(e);
         }
 
         List<AppEntry> recent = new ArrayList<AppEntry>();
@@ -373,22 +395,17 @@ public class MainActivity extends Activity {
         List<AppEntry> apps = new ArrayList<AppEntry>();
         for (int i = 0; i < allApps.size(); i++) {
             AppEntry e = allApps.get(i);
-            if (!hidden.contains(e.packageName)) {
+            if (!hidden.contains(e.packageName) && !favSlots.contains(e.packageName)) {
                 apps.add(e);
             }
         }
 
         int rowIndex = 0;
-        if (!favorites.isEmpty()) {
-            addAppRow("Favorites", "fav", favorites, rowIndex++);
-        }
-        if (!recent.isEmpty()) {
-            addAppRow("Recently used", "rec", recent, rowIndex++);
-        }
-        addAppRow("Apps", "all", apps, rowIndex++);
+        addFavoriteSlotsRow(byPkg, rowIndex++);
+        addAppsGridRow(apps, rowIndex++);
         addSystemRow(rowIndex);
 
-        updateBanner(byPkg);
+        // Featured banner removed: the app rows are now the home screen.
 
         // Put focus back where the user was, or on the first tile.
         View target = null;
@@ -403,7 +420,7 @@ public class MainActivity extends Activity {
         }
         if (target == null) {
             if (firstBuild || lastFocusKey == null) {
-                target = tiles.isEmpty() ? banner : tiles.get(0);
+                target = tiles.isEmpty() ? null : tiles.get(0);
             }
         }
         if (target != null) {
@@ -414,6 +431,49 @@ public class MainActivity extends Activity {
             scroll.scrollTo(0, 0);
             content.animate().alpha(1f).setDuration(260).start();
         }
+    }
+
+    private void seedDefaultFavorites(Map<String, AppEntry> byPkg) {
+        String[] wanted = new String[]{"youtube", "netflix", "aha", "jiohotstar"};
+        for (int slot = 0; slot < wanted.length; slot++) {
+            for (AppEntry app : allApps) {
+                String label = app.label == null ? "" : app.label.toLowerCase();
+                if (label.contains(wanted[slot])) {
+                    prefs.setFavoriteSlot(slot, app.packageName);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void addFavoriteSlotsRow(Map<String, AppEntry> byPkg, int rowIndex) {
+        final View row = LayoutInflater.from(this).inflate(R.layout.row_section, content, false);
+        ((TextView) row.findViewById(R.id.row_title)).setText("Favourites");
+        HorizontalScrollView hsv = (HorizontalScrollView) row.findViewById(R.id.row_scroll);
+        hsv.setBackgroundResource(R.drawable.bg_dock);
+        hsv.setPadding(Math.round(18 * density), Math.round(12 * density), Math.round(18 * density), Math.round(12 * density));
+        LinearLayout.LayoutParams dockLp = (LinearLayout.LayoutParams) hsv.getLayoutParams();
+        dockLp.setMargins(Math.round(52 * density), 0, Math.round(52 * density), 0);
+        hsv.setLayoutParams(dockLp);
+        LinearLayout items = (LinearLayout) row.findViewById(R.id.row_items);
+        List<String> slots = prefs.getFavoriteSlots();
+        for (int i = 0; i < 4; i++) {
+            String pkg = slots.get(i);
+            AppEntry app = pkg == null ? null : byPkg.get(pkg);
+            TileInfo info = new TileInfo();
+            info.type = app == null ? TYPE_FAV_SLOT : TYPE_APP;
+            info.entry = app;
+            info.slotIndex = i;
+            info.key = "favslot:" + i;
+            info.rowIndex = rowIndex;
+            info.rowView = row;
+            info.hsv = hsv;
+            View item = makeTile(items, info, app == null ? "Add app" : app.label);
+            ImageView icon = (ImageView) item.findViewById(R.id.tile_icon);
+            if (app != null) icons.bind(pm, app, icon);
+            else icon.setImageBitmap(icons.systemIcon(IconLoader.KIND_OPTIONS));
+        }
+        content.addView(row);
     }
 
     private void addAppRow(String title, String section, List<AppEntry> entries, int rowIndex) {
@@ -436,7 +496,61 @@ public class MainActivity extends Activity {
             View item = makeTile(items, info, e.label);
             icons.bind(pm, e, (ImageView) item.findViewById(R.id.tile_icon));
         }
+        if ("fav".equals(section)) {
+            TileInfo more = new TileInfo();
+            more.type = TYPE_MORE_APPS;
+            more.key = "more:apps";
+            more.rowIndex = rowIndex;
+            more.rowView = row;
+            more.hsv = hsv;
+            View moreItem = makeTile(items, more, "More Apps");
+            ((ImageView) moreItem.findViewById(R.id.tile_icon)).setImageBitmap(icons.systemIcon(IconLoader.KIND_OPTIONS));
+        }
         content.addView(row);
+    }
+
+    /** A compact five-column app library grid beneath the favourite dock. */
+    private void addAppsGridRow(List<AppEntry> entries, int rowIndex) {
+        if (entries.isEmpty()) return;
+        TextView heading = new TextView(this);
+        heading.setText("Apps");
+        heading.setTextColor(getResources().getColor(R.color.text_secondary));
+        heading.setTextSize(18);
+        heading.setTypeface(null, android.graphics.Typeface.BOLD);
+        heading.setPadding(Math.round(52 * density), Math.round(22 * density),
+                Math.round(52 * density), Math.round(10 * density));
+        content.addView(heading);
+
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(5);
+        grid.setUseDefaultMargins(false);
+        grid.setPadding(Math.round(52 * density), Math.round(8 * density),
+                Math.round(52 * density), Math.round(24 * density));
+        grid.setClipChildren(false);
+        grid.setClipToPadding(false);
+
+        for (int i = 0; i < entries.size(); i++) {
+            final AppEntry app = entries.get(i);
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_HORIZONTAL);
+            TileInfo info = new TileInfo();
+            info.type = TYPE_APP;
+            info.entry = app;
+            info.key = "all:" + app.packageName;
+            info.rowIndex = rowIndex + (i / 5);
+            info.rowView = cell;
+            View item = makeTile(cell, info, app.label);
+            icons.bind(pm, app, (ImageView) item.findViewById(R.id.tile_icon));
+
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams(
+                    GridLayout.spec(i / 5), GridLayout.spec(i % 5, 1f));
+            lp.width = 0;
+            lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+            lp.setMargins(0, 0, Math.round(8 * density), Math.round(8 * density));
+            grid.addView(cell, lp);
+        }
+        content.addView(grid);
     }
 
     private void addSystemRow(int rowIndex) {
@@ -491,9 +605,14 @@ public class MainActivity extends Activity {
         card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                float s = hasFocus ? 1.10f : 1.0f;
-                card.animate().scaleX(s).scaleY(s).setDuration(130).start();
-                labelView.animate().alpha(hasFocus ? 1f : 0f).setDuration(130).start();
+                float s = hasFocus ? 1.075f : 1.0f;
+                card.animate().cancel();
+                card.animate().scaleX(s).scaleY(s).translationZ(hasFocus ? 10f * density : 0f)
+                        .setDuration(hasFocus ? 170 : 140).start();
+                if (Build.VERSION.SDK_INT >= 21) {
+                    card.setElevation((hasFocus ? 14f : 2f) * density);
+                }
+                labelView.setAlpha(1f);
                 if (hasFocus) {
                     lastFocusKey = info.key;
                     scrollToTile(info);
@@ -514,12 +633,12 @@ public class MainActivity extends Activity {
             int targetX = center - info.hsv.getWidth() / 2;
             info.hsv.smoothScrollTo(Math.max(0, targetX), 0);
         }
-        int targetY;
-        if (info.rowIndex == 0) {
-            targetY = 0; // first row fits on screen together with the banner
-        } else {
-            targetY = Math.max(0, info.rowView.getTop() - Math.round(90 * density));
+        int rowTop = info.rowView == null ? 0 : info.rowView.getTop();
+        if (info.rowView != null && info.rowView.getParent() instanceof GridLayout) {
+            rowTop += ((View) info.rowView.getParent()).getTop();
         }
+        int targetY = info.rowIndex == 0 ? 0
+                : Math.max(0, rowTop - Math.round(90 * density));
         scroll.smoothScrollTo(0, targetY);
     }
 
@@ -572,6 +691,12 @@ public class MainActivity extends Activity {
             case TYPE_OPTIONS:
                 showOptionsDialog();
                 break;
+            case TYPE_MORE_APPS:
+                showAppDrawer();
+                break;
+            case TYPE_FAV_SLOT:
+                showFavoritePicker(info.slotIndex);
+                break;
             default:
                 break;
         }
@@ -589,6 +714,102 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             toast("Could not open " + e.label);
         }
+    }
+
+    private void showAppDrawer() {
+        final Dialog drawer = new Dialog(this, android.R.style.Theme_Material_NoActionBar_Fullscreen);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(36, 24, 36, 24);
+        root.setBackgroundColor(Color.rgb(8, 11, 19));
+
+        TextView heading = new TextView(this);
+        heading.setText("More Apps");
+        heading.setTextColor(Color.WHITE);
+        heading.setTextSize(28);
+        heading.setTypeface(null, android.graphics.Typeface.BOLD);
+        heading.setPadding(8, 8, 8, 20);
+        root.addView(heading);
+
+        ScrollView list = new ScrollView(this);
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(5);
+        grid.setUseDefaultMargins(true);
+        Set<String> hidden = new HashSet<String>(prefs.getHidden());
+        Set<String> favoritePackages = new HashSet<String>();
+        for (String pkg : prefs.getFavoriteSlots()) if (pkg != null) favoritePackages.add(pkg);
+        for (int i = 0; i < allApps.size(); i++) {
+            final AppEntry app = allApps.get(i);
+            if (hidden.contains(app.packageName) || favoritePackages.contains(app.packageName)) continue;
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setGravity(Gravity.CENTER);
+            card.setFocusable(true);
+            card.setClickable(true);
+            card.setPadding(12, 12, 12, 12);
+            GradientDrawable shape = new GradientDrawable();
+            shape.setColor(Color.rgb(27, 33, 47));
+            shape.setCornerRadius(22f);
+            card.setBackgroundDrawable(shape);
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = 150;
+            lp.height = 145;
+            lp.setMargins(10, 10, 10, 10);
+            card.setLayoutParams(lp);
+            ImageView icon = new ImageView(this);
+            LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(72, 72);
+            icon.setLayoutParams(ip);
+            icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            card.addView(icon);
+            icons.bind(pm, app, icon);
+            TextView name = new TextView(this);
+            name.setText(app.label);
+            name.setTextColor(Color.WHITE);
+            name.setTextSize(14);
+            name.setGravity(Gravity.CENTER);
+            name.setMaxLines(1);
+            card.addView(name);
+            card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override public void onFocusChange(View v, boolean focused) {
+                    v.animate().scaleX(focused ? 1.08f : 1f).scaleY(focused ? 1.08f : 1f).setDuration(120).start();
+                }
+            });
+            card.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { drawer.dismiss(); launch(app); }
+            });
+            grid.addView(card);
+        }
+        list.addView(grid);
+        root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1f));
+        TextView hint = new TextView(this);
+        hint.setText("Press Back to return home");
+        hint.setTextColor(Color.LTGRAY);
+        hint.setTextSize(13);
+        hint.setPadding(8, 14, 8, 4);
+        root.addView(hint);
+        drawer.setContentView(root);
+        drawer.show();
+        if (drawer.getWindow() != null) drawer.getWindow().setLayout(-1, -1);
+    }
+
+    private void showFavoritePicker(final int slot) {
+        final List<AppEntry> choices = new ArrayList<AppEntry>();
+        final List<String> labels = new ArrayList<String>();
+        for (AppEntry app : allApps) {
+            if (!prefs.getHidden().contains(app.packageName)) {
+                choices.add(app);
+                labels.add(app.label);
+            }
+        }
+        labels.add("Clear this slot");
+        dialog().setTitle("Choose app for slot " + (slot + 1))
+                .setItems(labels.toArray(new String[labels.size()]), new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface d, int which) {
+                        if (which == choices.size()) prefs.setFavoriteSlot(slot, null);
+                        else prefs.setFavoriteSlot(slot, choices.get(which).packageName);
+                        refresh();
+                    }
+                }).show();
     }
 
     private void openSettings() {
@@ -675,44 +896,54 @@ public class MainActivity extends Activity {
                 "Show all hidden apps",
                 "Clear favorites and recents",
                 "Remove featured app from banner",
-                "How to set my own wallpaper and banner",
+                "Choose built-in wallpaper",
+                "Choose my own picture",
+                "How to set a custom banner",
                 "About"
         };
         dialog().setTitle("Launcher options").setItems(items, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface d, int which) {
+            @Override public void onClick(DialogInterface d, int which) {
                 switch (which) {
-                    case 0:
-                        prefs.unhideAll();
-                        refresh();
-                        break;
-                    case 1:
-                        prefs.clearFavoritesAndRecent();
-                        refresh();
-                        break;
-                    case 2:
-                        prefs.setFeatured(null);
-                        refresh();
-                        break;
-                    case 3:
-                        dialog().setTitle("Custom wallpaper and banner")
-                                .setMessage("Copy your pictures to the Fire TV folder\n"
-                                        + "    Internal storage / FireLauncher\n\n"
-                                        + "using these exact names:\n"
-                                        + "    wallpaper.jpg  (best: 1920x1080)\n"
-                                        + "    banner.jpg  (best: 1800x400)\n\n"
-                                        + "PNG also works. Then close and reopen this launcher.\n"
-                                        + "Delete the files to go back to the built-in pictures.")
-                                .setPositiveButton("OK", null).show();
-                        break;
+                    case 0: prefs.unhideAll(); refresh(); break;
+                    case 1: prefs.clearFavoritesAndRecent(); refresh(); break;
+                    case 2: prefs.setFeatured(null); refresh(); break;
+                    case 3: showBuiltInWallpapers(); break;
                     case 4:
-                        dialog().setTitle("TV Home 1.0")
-                                .setMessage("A lightweight launcher for the Fire TV Stick 2nd generation.\n"
-                                        + "No Google services. It never changes or removes Amazon's own home screen.")
+                        Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                        pick.addCategory(Intent.CATEGORY_OPENABLE);
+                        pick.setType("image/*");
+                        pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                        try { startActivityForResult(pick, REQUEST_WALLPAPER); }
+                        catch (Throwable t) { toast("The picture picker is not available on this device."); }
+                        break;
+                    case 5:
+                        dialog().setTitle("Custom banner")
+                                .setMessage("Copy a picture to Internal storage / FireLauncher and name it banner.jpg (or banner.png). Restart TV Home to use it.")
                                 .setPositiveButton("OK", null).show();
                         break;
-                    default:
+                    case 6:
+                        dialog().setTitle("TV Home 1.0")
+                                .setMessage("A lightweight launcher for the Fire TV Stick 2nd generation. It never changes or removes Amazon's own home screen.")
+                                .setPositiveButton("OK", null).show();
                         break;
+                    default: break;
+                }
+            }
+        }).show();
+    }
+
+    private void showBuiltInWallpapers() {
+        final String[] names = new String[]{"Pure black", "Deep ocean", "Midnight"};
+        dialog().setTitle("Built-in wallpapers").setItems(names, new DialogInterface.OnClickListener() {
+            @Override public void onClick(DialogInterface d, int which) {
+                prefs.setWallpaperUri(null);
+                if (which == 1) {
+                    prefs.setWallpaperStyle("ocean");
+                    wallpaperView.setImageResource(R.drawable.wallpaper_ocean);
+                } else {
+                    prefs.setWallpaperStyle("default");
+                    wallpaperView.setImageDrawable(null);
+                    wallpaperView.setBackgroundColor(Color.BLACK);
                 }
             }
         }).show();

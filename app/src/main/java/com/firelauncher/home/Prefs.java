@@ -14,6 +14,10 @@ public class Prefs {
     private static final String K_HIDDEN = "hidden";
     private static final String K_RECENT = "recent";
     private static final String K_FEATURED = "featured";
+    private static final String K_FAV_SLOT = "favorite_slot_";
+    private static final String K_FAV_MIGRATED = "favorite_slots_migrated";
+    private static final String K_WALLPAPER_URI = "wallpaper_uri";
+    private static final String K_WALLPAPER_STYLE = "wallpaper_style";
     private static final int MAX_RECENT = 12;
     private static final String SEP = "\n";
 
@@ -56,23 +60,61 @@ public class Prefs {
     }
 
     public boolean isFavorite(String pkg) {
-        return getList(K_FAV).contains(pkg);
+        return getFavoriteSlots().contains(pkg);
     }
 
     /** @return true if the app is a favorite after the call. */
     public boolean toggleFavorite(String pkg) {
-        List<String> list = getList(K_FAV);
-        boolean now;
-        if (list.contains(pkg)) {
-            list.remove(pkg);
-            now = false;
-        } else {
-            list.add(pkg);
-            now = true;
+        List<String> slots = getFavoriteSlots();
+        for (int i = 0; i < slots.size(); i++) {
+            if (pkg.equals(slots.get(i))) {
+                setFavoriteSlot(i, null);
+                return false;
+            }
         }
-        putList(K_FAV, list);
-        return now;
+        for (int i = 0; i < slots.size(); i++) {
+            if (slots.get(i) == null) {
+                setFavoriteSlot(i, pkg);
+                return true;
+            }
+        }
+        return false;
     }
+
+    // ---- fixed home-screen favorite slots ----
+    public String getFavoriteSlot(int slot) {
+        return sp.getString(K_FAV_SLOT + slot, null);
+    }
+
+    public void setFavoriteSlot(int slot, String pkg) {
+        if (pkg == null) {
+            sp.edit().remove(K_FAV_SLOT + slot).apply();
+        } else {
+            sp.edit().putString(K_FAV_SLOT + slot, pkg).apply();
+        }
+    }
+
+    public List<String> getFavoriteSlots() {
+        if (!sp.getBoolean(K_FAV_MIGRATED, false)) {
+            List<String> old = getList(K_FAV);
+            SharedPreferences.Editor edit = sp.edit();
+            for (int i = 0; i < 4 && i < old.size(); i++) {
+                edit.putString(K_FAV_SLOT + i, old.get(i));
+            }
+            edit.putBoolean(K_FAV_MIGRATED, true).apply();
+        }
+        List<String> out = new ArrayList<String>();
+        for (int i = 0; i < 4; i++) out.add(getFavoriteSlot(i));
+        return out;
+    }
+
+    public String getWallpaperUri() { return sp.getString(K_WALLPAPER_URI, null); }
+    public void setWallpaperUri(String uri) {
+        if (uri == null) sp.edit().remove(K_WALLPAPER_URI).apply();
+        else sp.edit().putString(K_WALLPAPER_URI, uri).apply();
+    }
+    public String getWallpaperStyle() { return sp.getString(K_WALLPAPER_STYLE, "default"); }
+    public void setWallpaperStyle(String style) { sp.edit().putString(K_WALLPAPER_STYLE, style).apply(); }
 
     // ---- hidden ----
     public List<String> getHidden() {
@@ -107,7 +149,9 @@ public class Prefs {
     }
 
     public void clearFavoritesAndRecent() {
-        sp.edit().remove(K_FAV).remove(K_RECENT).apply();
+        SharedPreferences.Editor edit = sp.edit().remove(K_FAV).remove(K_RECENT);
+        for (int i = 0; i < 4; i++) edit.remove(K_FAV_SLOT + i);
+        edit.putBoolean(K_FAV_MIGRATED, true).apply();
     }
 
     // ---- featured banner app ----

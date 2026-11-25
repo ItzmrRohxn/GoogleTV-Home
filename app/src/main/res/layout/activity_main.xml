@@ -1,149 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@color/bg">
-
-    <ImageView
-        android:id="@+id/wallpaper"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:importantForAccessibility="no"
-        android:scaleType="centerCrop" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+    <ImageView android:id="@+id/wallpaper" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:background="#FF000000"
+        android:importantForAccessibility="no" android:scaleType="centerCrop" />
+    <View android:layout_width="match_parent" android:layout_height="match_parent"
         android:background="@drawable/scrim_wallpaper" />
-
-    <ScrollView
-        android:id="@+id/scroll"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:clipChildren="false"
-        android:clipToPadding="false"
-        android:fadingEdge="none"
-        android:overScrollMode="never"
-        android:scrollbars="none">
-
-        <LinearLayout
-            android:id="@+id/content"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:clipChildren="false"
-            android:clipToPadding="false"
-            android:orientation="vertical"
-            android:paddingBottom="200dp"
-            android:paddingTop="84dp">
-
-            <!-- Featured banner. Everything below it (the rows) is added from Java. -->
-            <FrameLayout
-                android:id="@+id/banner"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:layout_marginLeft="@dimen/screen_margin"
-                android:layout_marginRight="@dimen/screen_margin"
-                android:background="@drawable/bg_banner"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="@drawable/fg_banner_focus">
-
-                <ImageView
-                    android:id="@+id/banner_image"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:importantForAccessibility="no"
-                    android:scaleType="centerCrop" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/scrim_banner" />
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:gravity="center_vertical"
-                    android:orientation="vertical"
-                    android:paddingLeft="36dp"
-                    android:paddingRight="36dp">
-
-                    <ImageView
-                        android:id="@+id/banner_icon"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:layout_marginBottom="12dp"
-                        android:importantForAccessibility="no"
-                        android:scaleType="fitCenter"
-                        android:visibility="gone" />
-
-                    <TextView
-                        android:id="@+id/banner_title"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:maxWidth="520dp"
-                        android:maxLines="1"
-                        android:ellipsize="end"
-                        android:textColor="@color/text_primary"
-                        android:textSize="36sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/banner_subtitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:maxWidth="520dp"
-                        android:maxLines="2"
-                        android:ellipsize="end"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="16sp" />
-                </LinearLayout>
+    <ScrollView android:id="@+id/scroll" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:clipChildren="false"
+        android:clipToPadding="false" android:fadingEdge="none"
+        android:overScrollMode="never" android:scrollbars="none">
+        <LinearLayout android:id="@+id/content" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:clipChildren="false"
+            android:clipToPadding="false" android:orientation="vertical"
+            android:paddingBottom="96dp" android:paddingTop="88dp">
+            <FrameLayout android:id="@+id/banner" android:layout_width="match_parent"
+                android:layout_height="0dp" android:visibility="gone"
+                android:clickable="false" android:focusable="false">
+                <ImageView android:id="@+id/banner_image" android:layout_width="1dp"
+                    android:layout_height="1dp" />
+                <ImageView android:id="@+id/banner_icon" android:layout_width="1dp"
+                    android:layout_height="1dp" />
+                <TextView android:id="@+id/banner_title" android:layout_width="1dp"
+                    android:layout_height="1dp" />
+                <TextView android:id="@+id/banner_subtitle" android:layout_width="1dp"
+                    android:layout_height="1dp" />
             </FrameLayout>
         </LinearLayout>
     </ScrollView>
-
-    <!-- Top bar (title + date + clock), drawn over the scrolling content. Never focusable. -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="72dp"
-        android:background="@drawable/scrim_header">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+    <FrameLayout android:layout_width="match_parent" android:layout_height="72dp"
+        android:background="@android:color/transparent">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_gravity="center_vertical|left"
-            android:layout_marginLeft="@dimen/screen_margin"
-            android:text="Home"
-            android:textColor="@color/text_primary"
-            android:textSize="24sp"
+            android:layout_marginLeft="@dimen/screen_margin" android:text="Apps"
+            android:textColor="@color/text_primary" android:textSize="28sp"
             android:textStyle="bold" />
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_gravity="center_vertical|right"
             android:layout_marginRight="@dimen/screen_margin"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextClock
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:format12Hour="EEE, d MMM"
-                android:format24Hour="EEE, d MMM"
-                android:textColor="@color/text_secondary"
-                android:textSize="16sp" />
-
-            <TextClock
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="24dp"
-                android:format12Hour="h:mm a"
-                android:format24Hour="HH:mm"
-                android:textColor="@color/text_primary"
-                android:textSize="22sp"
-                android:textStyle="bold" />
+            android:gravity="center_vertical" android:orientation="horizontal">
+            <TextClock android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:format12Hour="EEE, d MMM" android:format24Hour="EEE, d MMM"
+                android:textColor="@color/text_secondary" android:textSize="15sp" />
+            <TextClock android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginLeft="22dp" android:format12Hour="h:mm a"
+                android:format24Hour="HH:mm" android:textColor="@color/text_primary"
+                android:textSize="19sp" android:textStyle="bold" />
         </LinearLayout>
     </FrameLayout>
 </FrameLayout>

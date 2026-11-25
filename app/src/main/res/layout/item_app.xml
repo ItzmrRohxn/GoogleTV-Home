@@ -10,16 +10,17 @@
     <FrameLayout
         android:id="@+id/tile_card"
         android:layout_width="@dimen/tile_size"
-        android:layout_height="@dimen/tile_size"
+        android:layout_height="@dimen/tile_height"
         android:background="@drawable/bg_tile"
         android:clickable="true"
-        android:focusable="true">
+        android:focusable="true"
+        android:clipChildren="false"
+        android:clipToOutline="true">
 
         <ImageView
             android:id="@+id/tile_icon"
-            android:layout_width="@dimen/icon_size"
-            android:layout_height="@dimen/icon_size"
-            android:layout_gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:importantForAccessibility="no"
             android:scaleType="fitCenter" />
     </FrameLayout>
@@ -28,11 +29,11 @@
         android:id="@+id/tile_label"
         android:layout_width="@dimen/tile_size"
         android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:alpha="0"
+        android:layout_marginTop="9dp"
+        android:alpha="1"
         android:ellipsize="end"
         android:gravity="center_horizontal"
         android:maxLines="1"
         android:textColor="@color/text_primary"
-        android:textSize="15sp" />
+        android:textSize="14sp" />
 </LinearLayout>
